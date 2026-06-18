@@ -1,0 +1,42 @@
+# Full demo stack: the gateway, two echo upstreams, Redis and Prometheus.
+# Usage: docker compose up --build
+# Then: curl localhost:8080/echo/anything   (round-robin across echo1/echo2)
+name: gateway
+
+services:
+  gateway:
+    build: .
+    ports:
+      - "8080:8080"   # proxy
+      - "9090:9090"   # admin: /healthz /readyz /metrics
+    environment:
+      RUST_LOG: info,hyper=warn,reqwest=warn
+      LOG_JSON: "true"
+    depends_on:
+      - echo1
+      - echo2
+      - redis
+
+  echo1:
+    image: mendhak/http-https-echo:31
+    environment:
+      HTTP_PORT: "8080"
+
+  echo2:
+    image: mendhak/http-https-echo:31
+    environment:
+      HTTP_PORT: "8080"
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./scripts/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9091:9090"
+    depends_on:
+      - gateway

@@ -1,0 +1,60 @@
+# Example gateway configuration.
+# Used by docker-compose (upstreams reference compose service names). For local
+# runs, point the upstream URLs at your own services or override this file.
+
+server:
+  bind_addr: "0.0.0.0:8080"
+  admin_bind_addr: "0.0.0.0:9090"
+  max_body_bytes: 8388608          # 8 MiB
+  default_timeout_ms: 30000
+  # redis_url: "redis://redis:6379"   # uncomment to enable distributed rate limiting
+
+routes:
+  # Round-robin across two echo upstreams, with active health checks and a
+  # circuit breaker. Caches GET responses for 10s.
+  - name: echo
+    matches:
+      path_prefix: "/echo"
+    strip_path_prefix: true
+    strategy: round_robin
+    retries: 2
+    upstreams:
+      - { url: "http://echo1:8080", weight: 1 }
+      - { url: "http://echo2:8080", weight: 1 }
+    circuit_breaker:
+      failure_threshold: 5
+      open_secs: 10
+    health_check:
+      path: "/"
+      interval_secs: 5
+      timeout_ms: 2000
+    cache:
+      ttl_secs: 10
+    rate_limit:
+      scope: ip
+      limit: 100
+      window_secs: 60
+    request_headers:
+      add:
+        x-gateway: "rust-api-gateway"
+    response_headers:
+      add:
+        x-served-by: "gateway"
+      remove:
+        - "server"
+
+  # An API-key-protected route using least-connections balancing.
+  - name: secure
+    matches:
+      path_prefix: "/secure"
+    strip_path_prefix: true
+    strategy: least_connections
+    auth:
+      type: api_key
+      keys: ["change-me-in-prod"]
+    upstreams:
+      - { url: "http://echo1:8080" }
+    rate_limit:
+      scope: api_key
+      limit: 20
+      window_secs: 60
