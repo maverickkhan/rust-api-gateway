@@ -1,0 +1,23 @@
+[package]
+name = "gw-integration-tests"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "End-to-end tests for the API gateway (mock upstreams + real proxy)"
+publish = false
+
+[dependencies]
+gw-core = { path = "../core" }
+gw-gateway = { path = "../gateway" }
+gw-telemetry = { path = "../telemetry" }
+tokio.workspace = true
+tokio-util.workspace = true
+axum.workspace = true
+http.workspace = true
+reqwest.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true }
